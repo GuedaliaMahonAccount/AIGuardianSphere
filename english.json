@@ -1,0 +1,12 @@
+[
+    {
+        "question": "I don't feel well, what should I do?",
+        "context": "",
+        "answer": "If it's a headache, try aspirin. If it's serious, consult a doctor here: [link]."
+    },
+    {
+        "question": "How can I find a doctor?",
+        "context": "",
+        "answer": "You can find a doctor at the following link: [link]."
+    }
+]
