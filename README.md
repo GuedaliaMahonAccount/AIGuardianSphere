@@ -1,11 +1,6 @@
 # AIGuardianSphere
 
 
-code colab drive: https:
-https://colab.research.google.com/drive/1YkhGfcsanss7DzrOB5ZfQJ3ivDua-xzX?usp=sharing
-
-
-
 we need to prepare a json with questions and answer like this: 
 [
     {
