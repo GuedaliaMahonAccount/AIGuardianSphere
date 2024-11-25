@@ -1,4 +1,3 @@
-# Step 1: Load JSON Files from Google Drive
 import json
 from datasets import Dataset
 from transformers import (
@@ -9,24 +8,21 @@ from transformers import (
     pipeline
 )
 
+# Chemins vers les fichiers JSON
+hebrew_path = "C:/Users/USER/guedaApp/AIGuardianSphere/hebrew.json"
+english_path = "C:/Users/USER/guedaApp/AIGuardianSphere/english.json"
 
-
-# Load Hebrew and English datasets
-with open("C:/Users/USER/guedaApp/AIGuardianSphere/english.json", "r", encoding="utf-8") as f:
+# Charger les fichiers JSON
+with open(english_path, "r", encoding="utf-8") as f:
     english_data = json.load(f)
 
-with open("C:/Users/USER/guedaApp/AIGuardianSphere/hebrew.json", "r", encoding="utf-8") as f:
+with open(hebrew_path, "r", encoding="utf-8") as f:
     hebrew_data = json.load(f)
 
-
-
-# Merge datasets into a single list
+# Fusionner les données
 all_data = hebrew_data + english_data
 
-
-
-
-# Step 2: Add Default Context if Empty
+# Contexte par défaut
 DEFAULT_CONTEXT = (
     "You are not alone. Many people experience fear, anxiety, or trauma in difficult situations. "
     "Take a deep breath. Remember, there are resources and people ready to help you. You can try "
@@ -34,36 +30,57 @@ DEFAULT_CONTEXT = (
     "If you feel overwhelmed, we recommend talking to a professional."
 )
 
-def add_default_context(data):
-    for item in data:
-        if not item["context"]:
-            item["context"] = DEFAULT_CONTEXT
-    return data
+# Liens réels
+REAL_LINKS = {
+    "doctor_link": "https://example.com/find-doctor",
+    "video_link": "https://example.com/calm-videos",
+    "help_link": "https://example.com/get-help"
+}
 
-all_data = add_default_context(all_data)
-
-
-
-
-
-
-# Step 3: Clean Text in the Dataset
-def clean_text(data):
+# Fonction pour corriger les données
+def fix_data(data, default_context, default_links):
     """
-    Cleans the text in the dataset by replacing placeholders and fixing formatting.
+    Fixes entries in the dataset by ensuring answers exist in their respective context.
+
+    Args:
+    - data: List of dictionaries containing 'question', 'context', and 'answer'.
+    - default_context: Default context to use if context is empty or missing.
+    - default_links: Dictionary of default links to replace placeholders in answers.
+
+    Returns:
+    - Fixed dataset where answers are always present in the context.
     """
+    fixed_data = []
+
     for item in data:
-        item["context"] = item["context"].replace("[link]", "this link").replace("[קישור]", "קישור זה")
-        item["answer"] = item["answer"].replace("[link]", "this link").replace("[קישור]", "קישור זה")
-    return data
+        # S'assurer que le contexte n'est pas vide
+        if not item.get("context"):
+            item["context"] = default_context
 
-all_data = clean_text(all_data)
+        # Remplacer les placeholders par des liens réels
+        for placeholder, real_link in default_links.items():
+            item["answer"] = item["answer"].replace(f"[{placeholder}]", real_link)
+            item["context"] = item["context"].replace(f"[{placeholder}]", real_link)
 
+        # Ajouter la réponse au contexte si elle est absente
+        if item["answer"] not in item["context"]:
+            item["context"] += f" {item['answer']}"
 
+        fixed_data.append(item)
 
+    return fixed_data
 
+# Corriger les données
+all_data = fix_data(all_data, DEFAULT_CONTEXT, REAL_LINKS)
 
-# Step 4: Prepare Data for Hugging Face Dataset
+# Valider les données corrigées
+for item in all_data:
+    if item["answer"] not in item["context"]:
+        print(f"Error: Answer not found in context for item: {item}")
+    else:
+        print(f"Validated: {item['question']}")
+
+# Préparer les données pour Hugging Face Dataset
 def prepare_data_for_hf(data):
     """
     Converts data into the format required by the Hugging Face Dataset.
@@ -81,48 +98,30 @@ def prepare_data_for_hf(data):
     }
     return Dataset.from_dict(processed_data)
 
-# Prepare dataset
+# Préparer le dataset
 dataset = prepare_data_for_hf(all_data)
 
-
-
-
-
-
-
-# Step 5: Split Data into Training and Evaluation Sets
+# Diviser les données en ensembles d'entraînement et de validation
 dataset = dataset.train_test_split(test_size=0.2)
 train_dataset = dataset["train"]
 eval_dataset = dataset["test"]
 
-
-
-
-
-
-
-# Step 6: Initialize Tokenizer and Model
-model_name = "deepset/roberta-base-squad2"  # Pre-trained model optimized for QA tasks
+# Initialiser le tokenizer et le modèle
+model_name = "xlm-roberta-base"
 model = AutoModelForQuestionAnswering.from_pretrained(model_name).to("cpu")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-
-
-
-
-
-
-# Step 7: Preprocessing Functions
+# Fonctions de prétraitement
 def tokenize_examples(examples):
     return tokenizer(
-        examples["question"], examples["context"],
-        truncation=True, padding="max_length", max_length=256  # Réduction de la taille max
+        examples["question"],
+        examples["context"],
+        truncation=True,
+        padding="max_length",
+        max_length=512
     )
 
 def add_answer_positions(examples):
-    """
-    Adds start and end positions for answers within the tokenized context.
-    """
     start_positions = []
     end_positions = []
     for i in range(len(examples["answers"])):
@@ -140,42 +139,26 @@ def add_answer_positions(examples):
     examples["end_positions"] = end_positions
     return examples
 
-
-
-
-
-# Step 8: Apply Preprocessing Functions to Datasets
+# Appliquer les fonctions de prétraitement
 train_dataset = train_dataset.map(tokenize_examples, batched=True)
 train_dataset = train_dataset.map(add_answer_positions, batched=True)
 
 eval_dataset = eval_dataset.map(tokenize_examples, batched=True)
 eval_dataset = eval_dataset.map(add_answer_positions, batched=True)
 
-
-
-
-
-
-# Step 9: Define Training Arguments
+# Définir les arguments d'entraînement
 training_args = TrainingArguments(
     output_dir="./results",
     evaluation_strategy="epoch",
     learning_rate=3e-5,
-    per_device_train_batch_size=4,  # Batch plus petit
-    gradient_accumulation_steps=1,
-    num_train_epochs=3,  # Réduction du nombre d'époques
+    per_device_train_batch_size=4,
+    num_train_epochs=3,
     weight_decay=0.01,
     save_total_limit=1,
     report_to="none",
 )
 
-
-
-
-
-
-
-# Step 10: Define the Trainer
+# Initialiser le formateur
 trainer = Trainer(
     model=model,
     args=training_args,
@@ -184,27 +167,14 @@ trainer = Trainer(
     tokenizer=tokenizer,
 )
 
-
-
-
-# Step 11: Train the Model
+# Entraîner le modèle
 trainer.train()
 
-
-
-
-
-
-# Step 12: Save the Model and Tokenizer
+# Sauvegarder le modèle et le tokenizer
 model.save_pretrained("./trained_model")
 tokenizer.save_pretrained("./trained_model")
 
-
-
-
-
-
-# Step 13: Test the Trained Model
+# Tester le modèle
 qa_pipeline = pipeline("question-answering", model=model, tokenizer=tokenizer, device=-1)
 
 # Example Test
@@ -213,7 +183,6 @@ test_questions = [
     {"question": "How do I manage my stress?", "context": "I feel overwhelmed after a long shift as a paramedic."},
     {"question": "I'm alone and afraid.", "context": ""}
 ]
-
 for test in test_questions:
     context = test["context"] if test["context"] else DEFAULT_CONTEXT
     result = qa_pipeline({"question": test["question"], "context": context})
