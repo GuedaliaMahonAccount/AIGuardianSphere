@@ -1,8 +1,8 @@
 # AIGuardianSphere
 
 
-code colab drive: https://colab.research.google.com/drive/1YkhGfcsanss7DzrOB5ZfQJ3ivDua-xzX#scrollTo=R3dnqXSChSxi
-
+code colab drive: https:
+https://colab.research.google.com/drive/1YkhGfcsanss7DzrOB5ZfQJ3ivDua-xzX?usp=sharing
 
 
 
