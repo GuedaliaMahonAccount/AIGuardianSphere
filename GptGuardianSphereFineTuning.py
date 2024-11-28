@@ -13,6 +13,9 @@ if not openai.api_key:
     raise ValueError("OpenAI API key not found. Set it in the .env file.")
 app = Flask(__name__)
 
+@app.route("/")
+def home():
+    return jsonify({"message": "welcome in guardian sphere model of gpt"})
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -82,4 +85,6 @@ def fine_tune():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    port = int(os.environ.get("PORT", 5001))
+    app.run(host="0.0.0.0", port=port, debug=True)
+
