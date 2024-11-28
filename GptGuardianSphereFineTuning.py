@@ -85,10 +85,10 @@ def chat():
         if not chat:
             return jsonify({"error": "Chat not found"}), 404
 
-        # Obtenir l'historique des messages pour ce chat
+        # Get the message history for this chat
         chat_messages = chat["messages"]
 
-        # Créer le contexte pour GPT avec l'historique
+        # Create the context for GPT with the history
         gpt_messages = [{"role": "system", "content": "You are a helpful assistant."}]
         for msg in chat_messages:
             gpt_messages.append({"role": msg["role"], "content": msg["content"]})
@@ -103,7 +103,7 @@ def chat():
 
         ai_message = response["choices"][0]["message"]["content"].strip()
 
-        # Sauvegarder les nouveaux messages
+        # Save the new messages
         chat_messages.extend([
             {"role": "user", "content": user_message},
             {"role": "assistant", "content": ai_message}
@@ -160,6 +160,31 @@ def delete_chat():
             return jsonify({"error": "Chat not found"}), 404
 
         return jsonify({"message": "Chat deleted successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/update-chat-title", methods=["PUT", "OPTIONS"])
+def update_chat_title():
+    if request.method == "OPTIONS":
+        return {}, 200
+
+    try:
+        username = request.json.get("username")
+        chat_id = request.json.get("chatId")
+        new_title = request.json.get("newTitle")
+
+        if not username or not chat_id or not new_title:
+            return jsonify({"error": "Username, chatId, and newTitle are required"}), 400
+
+        result = chat_collection.update_one(
+            {"_id": chat_id, "username": username},
+            {"$set": {"title": new_title}}
+        )
+
+        if result.matched_count == 0:
+            return jsonify({"error": "Chat not found"}), 404
+
+        return jsonify({"message": "Chat title updated successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
