@@ -1,20 +1,24 @@
 import os
 import uuid
 from flask import Flask, request, jsonify
-import openai
 from dotenv import load_dotenv
 from flask_cors import CORS
 from pymongo import MongoClient
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve the API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Azure OpenAI Configuration
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
 
-if not openai.api_key:
-    raise ValueError("OpenAI API key not found. Set it in the .env file.")
+if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME, AZURE_OPENAI_API_VERSION]):
+    raise ValueError("Azure OpenAI configuration is incomplete. Check your .env file.")
 
+# Flask application
 app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
@@ -33,7 +37,7 @@ chat_collection = db.get_collection("chats")
 
 @app.route("/")
 def home():
-    return jsonify({"message": "welcome in guardian sphere model of gpt"})
+    return jsonify({"message": "Welcome to the Azure OpenAI GPT-powered chat application"})
 
 @app.route("/new-chat", methods=["POST", "OPTIONS"])
 def new_chat():
@@ -94,14 +98,21 @@ def chat():
             gpt_messages.append({"role": msg["role"], "content": msg["content"]})
         gpt_messages.append({"role": "user", "content": user_message})
 
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=gpt_messages,
-            max_tokens=150,
-            temperature=0.7,
-        )
+        # Azure OpenAI API call
+        url = f"{AZURE_OPENAI_ENDPOINT}openai/deployments/{AZURE_OPENAI_DEPLOYMENT_NAME}/completions?api-version={AZURE_OPENAI_API_VERSION}"
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": AZURE_OPENAI_API_KEY,
+        }
+        payload = {
+            "messages": gpt_messages,
+            "max_tokens": 150,
+            "temperature": 0.7,
+        }
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
 
-        ai_message = response["choices"][0]["message"]["content"].strip()
+        ai_message = response.json()["choices"][0]["message"]["content"].strip()
 
         # Save the new messages
         chat_messages.extend([
@@ -119,10 +130,10 @@ def chat():
             "messages": chat_messages
         })
 
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Azure OpenAI API error: {str(e)}"}), 500
     except Exception as e:
-        if "quota" in str(e).lower():
-            return jsonify({"error": "Quota exceeded. Please check your OpenAI account for details."}), 429
-        return jsonify({"error": f"OpenAI API error: {str(e)}"}), 500
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 @app.route("/history/<username>", methods=["GET", "OPTIONS"])
 def get_chat_history(username):
