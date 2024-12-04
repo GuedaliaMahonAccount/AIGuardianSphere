@@ -9,8 +9,8 @@ from transformers import (
 )
 
 # Chemins vers les fichiers JSON
-hebrew_path = "C:/Users/USER/guedaApp/AIGuardianSphere/hebrew.json"
-english_path = "C:/Users/USER/guedaApp/AIGuardianSphere/english.json"
+hebrew_path = "/hebrew.json"
+english_path = "/english.json"
 
 # Charger les fichiers JSON
 with open(english_path, "r", encoding="utf-8") as f:
@@ -148,7 +148,7 @@ eval_dataset = eval_dataset.map(add_answer_positions, batched=True)
 
 # Définir les arguments d'entraînement
 training_args = TrainingArguments(
-    output_dir="./results",
+    output_dir="../results",
     evaluation_strategy="epoch",
     learning_rate=3e-5,
     per_device_train_batch_size=4,
