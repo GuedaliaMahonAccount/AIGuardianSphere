@@ -28,9 +28,9 @@ if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT
 app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:3000"],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
+        "origins": ["http://localhost:3000"],  # Allow requests from your frontend
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Include PUT
+        "allow_headers": ["Content-Type", "Authorization"],  # Allow necessary headers
         "supports_credentials": True
     }
 })
@@ -221,7 +221,8 @@ def new_chat():
             "_id": chat_id,
             "username": username,
             "title": title,
-            "messages": []
+            "messages": [],
+            "feedback": None  # Add this line
         }
 
         chat_collection.insert_one(chat_data)
@@ -230,12 +231,12 @@ def new_chat():
             "chat": {
                 "_id": chat_id,
                 "title": title,
-                "messages": []
+                "messages": [],
+                "feedback": None
             }
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
@@ -426,6 +427,52 @@ def update_chat_title():
         return jsonify({"message": "Chat title updated successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/update-feedback", methods=["PUT", "OPTIONS"])
+def update_chat_feedback():
+    if request.method == "OPTIONS":
+        return {}, 200
+
+    try:
+        # Log the incoming request
+        print("Incoming feedback update request...")
+
+        # Extract and log input data
+        username = request.json.get("username")
+        chat_id = request.json.get("chatId")
+        feedback = request.json.get("feedback")
+        print("Received data:", {"username": username, "chatId": chat_id, "feedback": feedback})
+
+        # Validate fields and feedback value
+        if not username or not chat_id or feedback not in ["like", "dislike"]:
+            print("Validation failed: missing fields or invalid feedback value.")
+            return jsonify({"error": "Invalid feedback or missing fields."}), 400
+
+        # Perform MongoDB query and log result
+        document = chat_collection.find_one({"_id": chat_id, "username": username})
+        print("Document found in MongoDB:", document)
+
+        if not document:
+            print("No matching document found for username and chatId.")
+            return jsonify({"error": "Chat not found"}), 404
+
+        # Update feedback in MongoDB
+        result = chat_collection.update_one(
+            {"_id": chat_id, "username": username},
+            {"$set": {"feedback": feedback}}
+        )
+        print("Update result:", result.raw_result)
+
+        if result.matched_count == 0:
+            print("No document matched for update.")
+            return jsonify({"error": "Chat not found"}), 404
+
+        print("Feedback updated successfully.")
+        return jsonify({"message": "Feedback updated successfully"})
+    except Exception as e:
+        print("Error in update_chat_feedback:", str(e))
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
