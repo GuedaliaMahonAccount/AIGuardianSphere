@@ -28,7 +28,7 @@ if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT
 app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:3000"],  # Allow requests from your frontend
+        "origins": ['https://guardian-sphere.azurewebsites.net','http://localhost:3000', 'https://guardianspheres.com' ],  # Allow requests from your frontend
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Include PUT
         "allow_headers": ["Content-Type", "Authorization"],  # Allow necessary headers
         "supports_credentials": True
@@ -472,6 +472,8 @@ def update_chat_feedback():
     except Exception as e:
         print("Error in update_chat_feedback:", str(e))
         return jsonify({"error": str(e)}), 500
+
+
 
 
 if __name__ == "__main__":
