@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  APP_NAME: guardian-sphere-python  # Nouveau nom de votre App Service
+  APP_NAME: guardian-sphere-python  # Nom de votre App Service
   PYTHON_VERSION: '3.10'
 
 jobs:
@@ -38,16 +38,10 @@ jobs:
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.APP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PYTHON  }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PYTHON }}
         package: app.zip
 
     # 6. Vérification du déploiement
     - name: Verify deployment
       run: |
         curl -I https://${{ env.APP_NAME }}.azurewebsites.net || echo "Deployment verification failed"
-
-
-# 7. Exécuter un script Python spécifique
-    - name: Run custom Python script
-      run: |
-           python GptGuardianSphereFineTuning.py
