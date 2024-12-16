@@ -45,3 +45,9 @@ jobs:
     - name: Verify deployment
       run: |
         curl -I https://${{ env.APP_NAME }}.azurewebsites.net || echo "Deployment verification failed"
+
+
+# 7. Exécuter un script Python spécifique
+    - name: Run custom Python script
+      run: |
+           python GptGuardianSphereFineTuning.py
