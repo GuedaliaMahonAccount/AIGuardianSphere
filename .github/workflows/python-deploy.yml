@@ -4,66 +4,61 @@ on:
   workflow_dispatch:
 
 env:
-  APP_NAME: guardian-sphere-python  # Nom de votre App Service
-  PYTHON_VERSION: '3.12'  # Version Python alignée avec celle d'Azure
+  APP_NAME: guardian-sphere-python
+  PYTHON_VERSION: '3.12'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout du code
-    - name: Checkout code
-      uses: actions/checkout@v4
+      # 1. Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # 2. Configuration de Python avec un environnement virtuel
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+      # 2. Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install dependencies in a virtual environment
-      run: |
-        python -m venv venv
-        source venv/bin/activate
-        pip install --upgrade pip setuptools wheel
-        pip install --no-cache-dir -r requirements.txt
+      # 3. Install dependencies in a virtual environment
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip setuptools wheel
+          pip install --no-cache-dir -r requirements.txt
 
-    # 3. Vérification des dépendances installées
-    - name: Debug installed packages
-      run: |
-        source venv/bin/activate
-        pip freeze
+      # 4. Debug installed packages
+      - name: Verify installed packages
+        run: |
+          source venv/bin/activate
+          pip freeze
 
-    # 4. Créer le script de démarrage
-    - name: Create startup script
-      run: |
-        echo '#!/bin/bash' > startup.sh
-        echo 'source venv/bin/activate' >> startup.sh
-        echo 'python run_waitress.py' >> startup.sh
-        chmod +x startup.sh
+      # 5. Create startup script and ensure it's executable
+      - name: Create startup script
+        run: |
+          echo '#!/bin/bash' > startup.sh
+          echo 'source venv/bin/activate' >> startup.sh
+          echo 'python run_waitress.py' >> startup.sh
+          git add startup.sh
+          git update-index --chmod=+x startup.sh
 
-    # 5. Créer le package d'application (zip)
-    - name: Package application
-      run: |
-        zip -r app.zip . -x "*.git*" "*.github*" "__pycache__/*" "*.log" "tmp/*" "*.sqlite*"
+      # 6. Package application
+      - name: Package application
+        run: |
+          zip -r app.zip . -x "*.git*" "*.github*" "__pycache__/*" "*.log" "tmp/*" "*.sqlite*"
 
-    # 6. Déployer l'application sur Azure
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ env.APP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PYTHON }}
-        package: app.zip
+      # 7. Deploy to Azure
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PYTHON }}
+          package: app.zip
 
-    # 7. Vérification du déploiement
-    - name: Verify deployment
-      run: |
-        curl -I https://${{ env.APP_NAME }}.azurewebsites.net || echo "Deployment verification failed"
-
-    # 8. Vérification des logs si besoin
-    - name: Log container status (Debugging)
-      if: failure()
-      run: |
-        echo "Fetching logs from Azure Web App..."
-        curl -s https://${{ env.APP_NAME }}.scm.azurewebsites.net/api/logs/docker | jq .
+      # 8. Verify deployment
+      - name: Verify deployment
+        run: |
+          curl -I https://${{ env.APP_NAME }}.azurewebsites.net || echo "Deployment verification failed"
