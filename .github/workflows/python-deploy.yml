@@ -22,11 +22,17 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    # 3. Installation des dépendances
-    - name: Install dependencies
+    - name: Create virtual environment and install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+            python -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
+    - name: Set startup command
+      run: |
+            echo 'python run_waitress.py' > startup.sh
+
 
     # 4. Préparer le package
     - name: Package application
