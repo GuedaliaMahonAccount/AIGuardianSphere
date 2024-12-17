@@ -22,24 +22,23 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Create virtual environment and install dependencies
+    # 3. Installer les dépendances directement sans venv
+    - name: Install dependencies
       run: |
-            python -m venv venv
-            source venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
+        pip install --upgrade pip
+        pip install -r requirements.txt
 
+    # 4. Créer le fichier de commande de démarrage
     - name: Set startup command
       run: |
-            echo 'python run_waitress.py' > startup.sh
+        echo 'python run_waitress.py' > startup.sh
 
-
-    # 4. Préparer le package
+    # 5. Préparer le package d'application
     - name: Package application
       run: |
-        zip -r app.zip . -x "*.git*" "*.github*"
+        zip -r app.zip . -x "*.git*" "*.github*" "__pycache__/*" "*.log" "tmp/*"
 
-    # 5. Déployer sur Azure
+    # 6. Déployer sur Azure Web App
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
@@ -47,7 +46,7 @@ jobs:
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PYTHON }}
         package: app.zip
 
-    # 6. Vérification du déploiement
+    # 7. Vérification du déploiement
     - name: Verify deployment
       run: |
         curl -I https://${{ env.APP_NAME }}.azurewebsites.net || echo "Deployment verification failed"
