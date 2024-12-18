@@ -8,7 +8,7 @@ import requests
 import json
 
 # Load emergency data from JSON file
-with open("emergency_numbers.json", "r", encoding="utf-8") as f:
+with open("data/emergency_numbers.json", "r", encoding="utf-8") as f:
     emergency_data = json.load(f)
 
 
